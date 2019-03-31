@@ -57,4 +57,7 @@ means_per_subject_activity <- rowMeans %>%
   group_by(subjectID, activity) %>%
   summarise(mean(means))
 
-write.table(means_per_subject_activity, file=(".\\means_per_subject_per_activity.txt"))
+write.table(means_per_subject_activity, file=(".\\means_per_subject_per_activity.txt"), row.names = FALSE)
+
+rm(means_measurements)
+rm(stdevs_measurements)
