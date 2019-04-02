@@ -1,5 +1,6 @@
 ## Getting and Cleaning data course project
 ## 1. Merges the training and the test sets to create one data set.
+library(dplyr)
 
 activity_labels <- read.table(".\\activity_labels.txt")
 measurements <- read.table(".\\features.txt") #NOTE: these aren't unique, so make bad column headers, don't use them in a tbl you need to later work with!
