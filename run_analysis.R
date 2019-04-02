@@ -1,63 +1,66 @@
 ## Getting and Cleaning data course project
 ## 1. Merges the training and the test sets to create one data set.
-library(dplyr)
 
 activity_labels <- read.table(".\\activity_labels.txt")
-measurement_headers <- read.table(".\\features.txt")
+measurements <- read.table(".\\features.txt") #NOTE: these aren't unique, so make bad column headers, don't use them in a tbl you need to later work with!
 test_result <- read.table(".\\test\\X_test.txt")
-  colnames(test_result) <- measurement_headers$V2
 train_result <- read.table(".\\train\\X_train.txt")
-  colnames(train_result) <- measurement_headers$V2
 test_activity <- read.table(".\\test\\y_test.txt")
-  colnames(test_activity) <- "activity"
 train_activity <- read.table(".\\train\\y_train.txt")
-  colnames(train_activity) <- "activity"
 test_subjectID <- read.table(".\\test\\subject_test.txt")
-  colnames(test_subjectID) <- "subjectID"
 train_subjectID <- read.table(".\\train\\subject_train.txt")
-  colnames(train_subjectID) <- "subjectID"
 
-## Just to get myself familiar with the data, I recode the activities from numbers to actuals activities
-test_activity$activity[which(test_activity$activity == 1)] <- "walking"
-test_activity$activity[which(test_activity$activity == 2)] <- "walking_upstairs"
-test_activity$activity[which(test_activity$activity == 3)] <- "walking_downstairs"
-test_activity$activity[which(test_activity$activity == 4)] <- "sitting"
-test_activity$activity[which(test_activity$activity == 5)] <- "standing"
-test_activity$activity[which(test_activity$activity == 6)] <- "laying"
-
-train_activity$activity[which(train_activity$activity == 1)] <- "walking"
-train_activity$activity[which(train_activity$activity == 2)] <- "walking_upstairs"
-train_activity$activity[which(train_activity$activity == 3)] <- "walking_downstairs"
-train_activity$activity[which(train_activity$activity == 4)] <- "sitting"
-train_activity$activity[which(train_activity$activity == 5)] <- "standing"
-train_activity$activity[which(train_activity$activity == 6)] <- "laying"
-
-## now make 1 dataset
+#make into 1 dataset
 all_complete <- rbind(
   cbind(test_subjectID, test_activity, test_result),
   cbind(train_subjectID, train_activity, train_result)
 )
- 
-## 2. Extract only the measurements on the mean and standard deviation for each measurement.
-means_measurements <- apply(all_complete[3:563], 2, mean)
-stdevs_measurements <- apply(all_complete[3:563], 2, sd)
-means_sd_measurements <- as.data.frame(rbind(means_measurements, stdevs_measurements))
-colnames(means_sd_measurements) <- measurement_headers$V2
 
-## 3. Uses descriptive activity names to name the activities in the data set
-  ## Already did that in rules 21 to 33
+#remove loaded tables
+rm(test_subjectID, test_activity, test_result, train_subjectID, train_activity, train_result)
 
-## 4. Appropriately labels the data set with descriptive variable names.
-  ## Already did that in rules 8, 10 & 45, I like my data to make sense as soon as possible.
+#=======
+#2: Extracts only the measurements on the mean and standard deviation for each measurement.
+#=======
+#Before I can use measurements$V2 as column names, I need to make them suitable, effectively meaning I have to replace all -'s with _'s
+measurements <- gsub("-","_",measurements$V2)
 
+names(all_complete) <- c("subjectID","activity", measurements)
+
+#search for "subjectID", "activity", "mean()" or "std()" in the column names
+columns_to_keep <- grepl("subjectID|activity|mean\\(\\)|std\\(\\)", colnames(all_complete))
+
+all_mean_std <- all_complete[, columns_to_keep]
+
+#=======
+#3: Uses descriptive activity names to name the activities in the data set
+#=======
+all_mean_std$activity[which(all_mean_std$activity == 1)] <- "walking"
+all_mean_std$activity[which(all_mean_std$activity == 2)] <- "walking_upstairs"
+all_mean_std$activity[which(all_mean_std$activity == 3)] <- "walking_downstairs"
+all_mean_std$activity[which(all_mean_std$activity == 4)] <- "sitting"
+all_mean_std$activity[which(all_mean_std$activity == 5)] <- "standing"
+all_mean_std$activity[which(all_mean_std$activity == 6)] <- "laying"
+
+#=======
+# 4. Appropriately labels the data set with descriptive variable names.
+#=======
+all_mean_std_columnnames <- names(all_mean_std)
+
+all_mean_std_columnnames <- gsub("Acc", "Acceleration", all_mean_std_columnnames)
+all_mean_std_columnnames <- gsub("Mag", "Magnitude", all_mean_std_columnnames)
+#to me, as a human movement scientist, all (other) column names actually make perfect sense to me, just showing here I can change them
+
+names(all_mean_std) <- all_mean_std_columnnames
+
+#=======
 ## 5. From the data set in step 4, creates a second, independent tidy data set
 ## with the average of each variable for each activity and each subject.
-rowMeans <- data.frame(subjectID=all_complete[,1], activity=all_complete[,2], means=rowMeans(all_complete[,-(1:2)]))
-means_per_subject_activity <- rowMeans %>%
+#=======
+grouped <- all_mean_std %>%
   group_by(subjectID, activity) %>%
-  summarise(mean(means))
+  summarize_all(mean)                #This only works because I replaced the - by _ in the column names: took me ages to figure that out.
 
-write.table(means_per_subject_activity, file=(".\\means_per_subject_per_activity.txt"), row.names = FALSE)
+write.table(grouped, file=(".\\means_per_subject_per_activity.txt"), row.names = FALSE)
 
-rm(means_measurements)
-rm(stdevs_measurements)
+rm(all_mean_std_columnnames, columns_to_keep, measurements, activity_labels)
